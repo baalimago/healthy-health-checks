@@ -15,9 +15,9 @@ func main() {
 	}
 	healthyAfter, err := time.ParseDuration(healthyAfterStr)
 
-	unhealthyAfterStr, unhealthyAfterEnvExists := os.LookupEnv("UNHEALTHY_AFTER_DURATION")
+	unhealthyAfterStr, shouldGetUnhealthy := os.LookupEnv("UNHEALTHY_AFTER_DURATION")
 	var unhealthyAfter time.Duration
-	if unhealthyAfterEnvExists {
+	if shouldGetUnhealthy {
 		unhealthyAfter, err = time.ParseDuration(unhealthyAfterStr)
 		if err != nil {
 			panic("Missing environment variable 'HEALTHY_AFTER_DURATION'")
@@ -31,7 +31,7 @@ func main() {
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		timeSinceStart := time.Since(t0)
 		if timeSinceStart > healthyAfter {
-			if unhealthyAfterEnvExists && timeSinceStart > unhealthyAfter {
+			if shouldGetUnhealthy && timeSinceStart > unhealthyAfter {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("Time's up! Now I'm unhealthy!"))
 				return
