@@ -1,16 +1,52 @@
 data "aws_region" "current" {}
 
-# We'll deploy to the default VPC for simplicity's sake
-data "aws_vpc" "default" {
-  default = true
+data "aws_availability_zones" "available" {
+  state = "available"
 }
 
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
+# Add these blocks
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name = "healthy-healthchecks-vpc"
   }
 }
+
+resource "aws_subnet" "public" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.${count.index + 1}.0/24"
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "healthy-healthchecks-public-${count.index + 1}"
+  }
+}
+
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
 
 # This resource is to block all access to the deployed services except from 
 # the deployer's own ip address
@@ -61,6 +97,7 @@ resource "null_resource" "docker_build" {
 
 
 resource "aws_ecs_task_definition" "app" {
+  for_each                 = var.docker-images
   family                   = "healthy-healthchecks"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -69,14 +106,22 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
   container_definitions = jsonencode([
     {
-      name  = "my-app"
-      image = "${aws_ecr_repository.healthy-healthchecks.repository_url}:latest"
+      name  = each.value
+      image = "${aws_ecr_repository.healthy-healthchecks.repository_url}:${each.value}"
       portMappings = [
         {
           containerPort = 80
           protocol      = "tcp"
         }
       ]
+
+      environment = [
+        {
+          "name" : "HEALTHY_AFTER_DURATION",
+          "value" : "5s"
+        }
+      ]
+
     }
   ])
 
@@ -100,15 +145,22 @@ resource "aws_iam_role" "ecs_execution_role" {
 }
 
 resource "aws_ecs_service" "app" {
+  for_each        = var.docker-images
   name            = "healthy-healthchecks"
   cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
+  task_definition = aws_ecs_task_definition.app[each.key].arn
   desired_count   = 1
   launch_type     = "FARGATE"
   network_configuration {
-    subnets          = data.aws_subnets.default.ids
+    subnets          = [aws_subnet.public[0].cidr_block, aws_subnet.public[1].cidr_block]
     assign_public_ip = true
     security_groups  = [aws_security_group.ecs_tasks.id]
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = "my-app"
+    container_port   = 80
   }
 }
 
@@ -116,7 +168,7 @@ resource "aws_ecs_service" "app" {
 resource "aws_security_group" "ecs_tasks" {
   name        = "ecs-tasks-sg"
   description = "Security group for ECS tasks"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = aws_vpc.main.id
 
   ingress {
     description = "Allow port 80 on the deloyers current IP address"
@@ -141,5 +193,56 @@ resource "aws_ecs_cluster" "main" {
   setting {
     name  = "containerInsights"
     value = "enabled"
+  }
+}
+
+resource "aws_lb" "app" {
+  name                       = "healthy-healthchecks"
+  internal                   = false
+  load_balancer_type         = "application"
+  security_groups            = [aws_security_group.alb.id]
+  subnets                    = [aws_subnet.public[0].id, aws_subnet.public[1].id]
+  drop_invalid_header_fields = true
+}
+
+resource "aws_lb_target_group" "app" {
+  name        = "healthy-healthchecks"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+}
+
+resource "aws_lb_listener" "app" {
+  load_balancer_arn = aws_lb.app.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
+# Add ALB security group
+resource "aws_security_group" "alb" {
+  name        = "alb-sg"
+  description = "Security group for ALB"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Allows access on port 80 to the deployers public IP"
+    protocol    = "tcp"
+    from_port   = 80
+    to_port     = 80
+    cidr_blocks = ["${data.http.my_public_ip.response_body}/32"]
+  }
+
+  egress {
+    description = "Allows access on port 80 to the deployers public IP"
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = ["${data.http.my_public_ip.response_body}/32"]
   }
 }
