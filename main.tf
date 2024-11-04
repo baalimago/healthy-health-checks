@@ -9,7 +9,22 @@ module "local" {
 }
 
 module "remote" {
-  count         = var.start_remote ? 1 : 0
-  source        = "./module/aws-ecs-lb/"
-  docker-images = module.docker.image-names
+  count  = var.start_remote ? 1 : 0
+  source = "./module/aws-ecs-lb/"
+  deployments = [{
+    name                   = "quickly-healthy"
+    local-docker-image     = module.docker.image-names.with-healthcheck,
+    healthy-after-duration = "5s"
+    }, {
+    name                   = "slowly-healthy"
+    local-docker-image     = module.docker.image-names.with-healthcheck,
+    healthy-after-duration = "180s"
+    },
+    {
+      name                     = "quickly-unhealthy"
+      local-docker-image       = module.docker.image-names.with-healthcheck,
+      healthy-after-duration   = "5s",
+      unhealthy-after-duration = "30s"
+    }
+  ]
 }

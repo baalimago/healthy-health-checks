@@ -1,5 +1,5 @@
 resource "aws_ecs_task_definition" "app" {
-  for_each                 = var.docker-images
+  for_each                 = { for d in var.deployments : d.name => d }
   family                   = "healthy-healthchecks"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -8,8 +8,8 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
   container_definitions = jsonencode([
     {
-      name  = each.value
-      image = "${aws_ecr_repository.healthy-healthchecks.repository_url}:${each.key}"
+      name  = each.value.name
+      image = "${aws_ecr_repository.healthy-healthchecks.repository_url}:${each.value.local-docker-image}"
       portMappings = [
         {
           containerPort = 8080
@@ -20,12 +20,12 @@ resource "aws_ecs_task_definition" "app" {
       environment = [
         {
           "name" : "HEALTHY_AFTER_DURATION",
-          "value" : "5s"
+          "value" : each.value.healthy-after-duration
         },
         {
 
           "name" : "UNHEALTHY_AFTER_DURATION",
-          "value" : "120s"
+          "value" : each.value.unhealthy-after-duration
         }
       ]
       logConfiguration = {
@@ -33,7 +33,7 @@ resource "aws_ecs_task_definition" "app" {
         options = {
           "awslogs-group"         = "/ecs/healthy-healthchecks"
           "awslogs-region"        = data.aws_region.current.name
-          "awslogs-stream-prefix" = each.value
+          "awslogs-stream-prefix" = each.value.name
         }
       }
       healthCheck = {
@@ -102,8 +102,8 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
 }
 
 resource "aws_ecs_service" "app" {
-  for_each        = var.docker-images
-  name            = "healthy-healthchecks_${each.value}"
+  for_each        = { for d in var.deployments : d.name => d }
+  name            = each.value.name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app[each.key].arn
   desired_count   = 1
@@ -117,7 +117,7 @@ resource "aws_ecs_service" "app" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.app.arn
-    container_name   = each.value
+    container_name   = each.value.name
     container_port   = 8080
   }
 }

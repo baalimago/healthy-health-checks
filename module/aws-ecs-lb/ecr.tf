@@ -24,7 +24,7 @@ resource "aws_ecr_repository" "healthy-healthchecks" {
 
 
 resource "null_resource" "docker_build" {
-  for_each = var.docker-images
+  for_each = toset([for d in var.deployments : d.local-docker-image])
 
   triggers = {
     ecr_repository_url = aws_ecr_repository.healthy-healthchecks.repository_url
