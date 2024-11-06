@@ -1,3 +1,19 @@
+locals {
+  healthchecks = { for d in var.deployments : d.name => {
+    command = ["CMD-SHELL", <<-EOF
+wget --no-verbose \
+        --tries=1 \
+        --spider \
+        --server-response \
+        http://localhost:8080/health 2>&1 | grep -q "HTTP/1.1 2" || exit 1
+EOF
+    ]
+    interval    = 30
+    timeout     = 5
+    retries     = 3
+    startPeriod = 10
+  } }
+}
 resource "aws_ecs_task_definition" "app" {
   for_each                 = { for d in var.deployments : d.name => d }
   family                   = "healthy-healthchecks"
@@ -36,20 +52,7 @@ resource "aws_ecs_task_definition" "app" {
           "awslogs-stream-prefix" = each.value.name
         }
       }
-      healthCheck = {
-        command = ["CMD-SHELL", <<-EOF
-wget --no-verbose \
-        --tries=1 \
-        --spider \
-        --server-response \
-        http://localhost:8080/health 2>&1 | grep -q "HTTP/1.1 2" || exit 1
-EOF
-        ]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 10
-      }
+      healthCheck = each.value.with-ecs-healthcheck ? local.healthchecks[each.value.name] : null
     }
   ])
 

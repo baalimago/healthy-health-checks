@@ -16,13 +16,17 @@ resource "aws_lb_target_group" "app" {
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
 
-  health_check {
-    path                = "/health" # Set your desired health check path
-    healthy_threshold   = 2
-    unhealthy_threshold = 10
-    timeout             = 5
-    interval            = 10
-    matcher             = "200" # Expected HTTP response code
+  dynamic "health_check" {
+    for_each = each.value.with-lb-healthcheck ? [1] : []
+
+    content {
+      path                = "/health" # Set your desired health check path
+      healthy_threshold   = 2
+      unhealthy_threshold = 10
+      timeout             = 5
+      interval            = 10
+      matcher             = "200" # Expected HTTP response code
+    }
   }
 }
 

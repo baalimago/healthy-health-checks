@@ -21,10 +21,20 @@ module "remote" {
     healthy-after-duration = "180s"
     },
     {
-      name                     = "quickly-unhealthy"
+      name                     = "quickly-unhealthy-no-ecs-hc"
       local-docker-image       = module.docker.image-names.with-healthcheck,
       healthy-after-duration   = "5s",
-      unhealthy-after-duration = "30s"
+      unhealthy-after-duration = "30s",
+      with-ecs-healthcheck     = false
+      with-lb-healthcheck      = true
+    },
+    {
+      name                     = "quickly-unhealthy-yes-ecs-hc"
+      local-docker-image       = module.docker.image-names.with-healthcheck,
+      healthy-after-duration   = "5s",
+      unhealthy-after-duration = "30s",
+      with-ecs-healthcheck     = true
+      with-lb-healthcheck      = true
     }
   ]
 }
