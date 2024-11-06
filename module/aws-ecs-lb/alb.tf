@@ -1,5 +1,6 @@
 resource "aws_lb" "app" {
-  name                       = "healthy-healthchecks"
+  for_each                   = { for d in var.deployments : d.name => d }
+  name                       = replace(each.value.name, "_", "-")
   internal                   = false
   load_balancer_type         = "application"
   security_groups            = [aws_security_group.alb.id]
@@ -8,7 +9,8 @@ resource "aws_lb" "app" {
 }
 
 resource "aws_lb_target_group" "app" {
-  name        = "healthy-healthchecks"
+  for_each    = { for d in var.deployments : d.name => d }
+  name        = replace(each.value.name, "_", "-")
   port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
@@ -25,13 +27,14 @@ resource "aws_lb_target_group" "app" {
 }
 
 resource "aws_lb_listener" "app" {
-  load_balancer_arn = aws_lb.app.arn
+  for_each          = { for d in var.deployments : d.name => d }
+  load_balancer_arn = aws_lb.app[each.key].arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.app.arn
+    target_group_arn = aws_lb_target_group.app[each.key].arn
   }
 }
 

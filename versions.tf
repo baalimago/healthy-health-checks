@@ -18,3 +18,15 @@ terraform {
 
   required_version = "~> 1.9"
 }
+
+provider "aws" {
+  default_tags {
+    tags = {
+      Environment        = "blog-demo"
+      Application        = "healthy-healthchecks"
+      Terraform          = "true"
+      OriginalRepository = var.repo
+      Owner              = var.owner
+    }
+  }
+}
