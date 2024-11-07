@@ -32,15 +32,21 @@ func main() {
 		timeSinceStart := time.Since(t0)
 		if timeSinceStart > healthyAfter {
 			if shouldGetUnhealthy && timeSinceStart > unhealthyAfter {
+				unhealthySince := timeSinceStart - unhealthyAfter
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("Time's up! Now I'm unhealthy!"))
+				fmt.Fprintf(w, "Time's up, now I'm unhealthy! Been unhealthy for: %v", unhealthySince)
 				return
 			}
+			out := "Now I'm healthy."
+			if shouldGetUnhealthy {
+				out += fmt.Sprintf(" Turning unhealthy in: %v", unhealthyAfter-timeSinceStart)
+			}
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Now I'm healthy."))
+			w.Write([]byte(out))
 		} else {
+			bootupDoneAt := healthyAfter - timeSinceStart
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Not ready and therefore not healthy."))
+			fmt.Fprintf(w, "Not ready and therefore not healthy. 'Bootup' done in: %v", bootupDoneAt)
 		}
 	})
 	fmt.Println("serving health status on localhost:8080/health")
