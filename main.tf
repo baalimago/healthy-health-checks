@@ -11,30 +11,19 @@ module "local" {
 module "remote" {
   count  = var.start_remote ? 1 : 0
   source = "./module/aws-ecs-lb/"
-  deployments = [{
-    name                   = "quickly-healthy"
-    local-docker-image     = module.docker.image-names.with-healthcheck,
-    healthy-after-duration = "5s"
-    }, {
-    name                   = "slowly-healthy"
-    local-docker-image     = module.docker.image-names.with-healthcheck,
-    healthy-after-duration = "180s"
-    },
+  deployments = [
     {
-      name                     = "quickly-unhealthy-no-ecs-hc"
+      name                     = "long-boottime-yes-all-hc"
       local-docker-image       = module.docker.image-names.with-healthcheck,
-      healthy-after-duration   = "5s",
-      unhealthy-after-duration = "30s",
-      with-ecs-healthcheck     = false
-      with-lb-healthcheck      = true
-    },
-    {
-      name                     = "quickly-unhealthy-yes-ecs-hc"
-      local-docker-image       = module.docker.image-names.with-healthcheck,
-      healthy-after-duration   = "5s",
-      unhealthy-after-duration = "30s",
+      healthy-after-duration   = "60s",
+      unhealthy-after-duration = "180s",
       with-ecs-healthcheck     = true
       with-lb-healthcheck      = true
+      lb-healthcheck = {
+        healthy_threshhold    = 3
+        unhealthy_threashhold = 3
+        interval              = 10
+      }
     }
   ]
 }
