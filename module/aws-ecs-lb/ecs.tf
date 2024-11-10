@@ -8,7 +8,7 @@ wget --no-verbose \
         http://localhost:8080/health 2>&1 | grep -q "HTTP/1.1 2" || exit 1
 EOF
     ]
-    interval    = 30
+    interval    = 10
     timeout     = 5
     retries     = 3
     startPeriod = 10

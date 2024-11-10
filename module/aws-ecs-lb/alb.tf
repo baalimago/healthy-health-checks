@@ -21,10 +21,10 @@ resource "aws_lb_target_group" "app" {
 
     content {
       path                = "/health" # Set your desired health check path
-      healthy_threshold   = 2
-      unhealthy_threshold = 10
-      timeout             = 5
-      interval            = 10
+      healthy_threshold   = each.value.lb-healthcheck.healthy_threshold
+      unhealthy_threshold = each.value.lb-healthcheck.unhealthy_threshold
+      timeout             = each.value.lb-healthcheck.timeout
+      interval            = each.value.lb-healthcheck.interval
       matcher             = "200" # Expected HTTP response code
     }
   }
