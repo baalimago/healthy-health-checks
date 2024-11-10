@@ -3,7 +3,7 @@ resource "docker_image" "munchausen_without-healthcheck" {
   build {
     context    = "."
     dockerfile = "${path.root}/Dockerfile_no-healthcheck"
-    tag        = ["munchausen:without-healthcheck"]
+    tag        = ["without-healthcheck-${filesha1("${path.root}/main.go")}"]
     label = {
       author : "Lorentz Kinde",
       blogpost : "Healthy healthchecks, lorentz.app"
@@ -20,7 +20,7 @@ resource "docker_image" "munchausen_with-healthcheck" {
   build {
     context    = "."
     dockerfile = "${path.root}/Dockerfile_with-healthcheck"
-    tag        = ["munchausen:with-healthcheck"]
+    tag        = ["with-healthcheck-${filesha1("${path.root}/main.go")}"]
     label = {
       author : "Lorentz Kinde",
       blogpost : "Healthy healthchecks, lorentz.app"
