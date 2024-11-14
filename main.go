@@ -10,7 +10,8 @@ import (
 // main function containing _everything_ since that just made it easier
 func main() {
 	t0 := time.Now()
-	// First parse out the environment variables to determine when
+	// First parse out the environment variables to determine when to turn healthy
+	// Before this, the service is 'booting'
 	healthyAfterStr := os.Getenv("HEALTHY_AFTER_DURATION")
 	if healthyAfterStr == "" {
 		panic("Missing environment variable 'HEALTHY_AFTER_DURATION'")
