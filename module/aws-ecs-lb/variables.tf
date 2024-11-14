@@ -7,6 +7,7 @@ variable "deployments" {
     unhealthy-after-duration : optional(string)
     with-ecs-healthcheck : optional(bool, true),
     with-lb-healthcheck : optional(bool, true)
+    fail-ecs-healthcheck : optional(bool, false),
     lb-healthcheck : object({
       healthy_threshold : optional(number, 3),
       unhealthy_threshold : optional(number, 3),

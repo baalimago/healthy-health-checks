@@ -5,13 +5,13 @@ wget --no-verbose \
         --tries=1 \
         --spider \
         --server-response \
-        http://localhost:8080/health 2>&1 | grep -q "HTTP/1.1 2" || exit 1
+        http://localhost:8080/${d.fail-ecs-healthcheck ? "" : "health"} 2>&1 | grep -q "HTTP/1.1 2" || exit 1
 EOF
     ]
-    interval    = 10
-    timeout     = 5
+    interval    = 5
+    timeout     = 3
     retries     = 3
-    startPeriod = 10
+    startPeriod = 5
   } }
 }
 resource "aws_ecs_task_definition" "app" {
@@ -105,12 +105,13 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
 }
 
 resource "aws_ecs_service" "app" {
-  for_each        = { for d in var.deployments : d.name => d }
-  name            = each.value.name
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app[each.key].arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  for_each                           = { for d in var.deployments : d.name => d }
+  name                               = each.value.name
+  cluster                            = aws_ecs_cluster.main.id
+  task_definition                    = aws_ecs_task_definition.app[each.key].arn
+  desired_count                      = 1
+  launch_type                        = "FARGATE"
+  deployment_minimum_healthy_percent = 100
 
   network_configuration {
     subnets          = aws_subnet.public[*].id
