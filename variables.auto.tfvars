@@ -1,3 +1,3 @@
-start_local  = false
-start_remote = true
+start_local  = true
+start_remote = false
 owner        = "Lorentz Kinde"
