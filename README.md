@@ -72,10 +72,10 @@ If you wish to restart the containers, run:
 ## Remote deployment
 
 To deploy remotely, ensure that you have AWS setup.
-Remember that provisioning cloud infrastructure _comes at a cost_, so remember to always tear down your resources when you're done (unless you wish to keep it running).
+Provisioning cloud infrastructure _comes at a cost_, so remember to always tear down your resources when you're done (unless you wish to keep it running).
 
 This remote project will [lookup your local IP address](./module/aws-ecs-lb/main.tf) and [create a firewall](./module/aws-ecs-lb/ecs.tf) which blocks all access except for the IP that you're currently running.
-You won't be deploying anything crucial, but keep this in mind whenever sharing the link to a friend fails.
+Keep this in mind whenever if you decide to extend/modify this project + share the result to a friend.
 
 To deploy:
 
