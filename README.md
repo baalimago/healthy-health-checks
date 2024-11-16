@@ -68,3 +68,30 @@ If you wish to restart the containers, run:
 1. Type 'yes' to de-provision the resources
 1. `terraform apply`
 1. Type 'yes' to apply
+
+## Remote deployment
+
+To deploy remotely, ensure that you have AWS setup.
+Remember that provisioning cloud infrastructure _comes at a cost_, so remember to always tear down your resources when you're done (unless you wish to keep it running).
+
+This remote project will [lookup your local IP address](./module/aws-ecs-lb/main.tf) and [create a firewall](./module/aws-ecs-lb/ecs.tf) which blocks all access except for the IP that you're currently running.
+You won't be deploying anything crucial, but keep this in mind whenever sharing the link to a friend fails.
+
+To deploy:
+
+1. Modify the [autovars](./variables.auto.tfvars) and set `start_remote=true`
+1. `terraform apply`
+1. Done!
+
+So what it will do is that it will:
+
+1. Build a docker image using the same [docker image module](./module/docker-image) as you used for the local deployment
+1. Push the image to a newly created private [*E*lastic *C*ontainer *R*egistry (ECR)](./module/aws-ecs-lb/ecr.tf)
+1. Create a [ecs cluster](./module/aws-ecs-lb/ecs.tf)
+1. Create a task definition, which uses the docker image you just pushed to ECR
+1. Deploy the task definition to one (or more) ECS services, as defined in the [deployments configurations](./main.tf)
+
+You can now configure the services and play around with different healthcheck, timeouts, turn the different heathchecks on and off and investigate the results.
+
+After you're done for the day _remember to run `terraform destroy`_ so that you don't spend more money than you need to.
+All of these services are very cheap, but it's not free.
