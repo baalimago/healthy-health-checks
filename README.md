@@ -1,6 +1,6 @@
 # Healthy healthchecks
 
-This repo is a companion to [my blog post exploring healthchecks](https://lorentz.app/blog-item.html?id=healthy-healthchecks).
+This repo is a companion to [my blog post exploring healthchecks](https://lorentz.app/blog-item.html?id=healthy-health-checks).
 It focuses primarily on ECS, but also enables local healtcheck exploration, using Terraform for deployment.
 
 ## Prerequisites
