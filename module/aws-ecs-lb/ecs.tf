@@ -39,9 +39,12 @@ resource "aws_ecs_task_definition" "app" {
           "value" : each.value.healthy-after-duration
         },
         {
-
           "name" : "UNHEALTHY_AFTER_DURATION",
           "value" : each.value.unhealthy-after-duration
+        },
+        {
+          "name" : "TIMEOUT_ON_UNHEALTHY",
+          "value" : each.value.timeout-on-unhealthy ? "true" : "false"
         }
       ]
       logConfiguration = {

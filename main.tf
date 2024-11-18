@@ -15,15 +15,16 @@ module "remote" {
     {
       name                     = "long-boottime-yes-all-hc"
       local-docker-image       = module.docker.image-names.with-healthcheck,
-      healthy-after-duration   = "60s",
-      unhealthy-after-duration = "180s",
+      healthy-after-duration   = "5s",
+      unhealthy-after-duration = "65s",
+      timeout-on-unhealthy     = true
       with-ecs-healthcheck     = true
       with-lb-healthcheck      = true
       lb-healthcheck = {
         healthy_threshhold    = 5
-        unhealthy_threashhold = 5
-        interval              = 5
-        timeout               = 3
+        unhealthy_threashhold = 3
+        interval              = 20
+        timeout               = 19
       }
     }
   ]

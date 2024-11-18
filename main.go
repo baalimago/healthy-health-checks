@@ -20,6 +20,7 @@ func main() {
 
 	// Lookup if we should feign unhealthiness at all
 	unhealthyAfterStr, shouldGetUnhealthy := os.LookupEnv("UNHEALTHY_AFTER_DURATION")
+	_, timeoutOnUnhealthy := os.LookupEnv("TIMEOUT_ON_UNHEALTHY")
 	var unhealthyAfter time.Duration
 	if shouldGetUnhealthy {
 		unhealthyAfter, err = time.ParseDuration(unhealthyAfterStr)
@@ -32,19 +33,23 @@ func main() {
 		panic(fmt.Sprintf("failed to parse 'UNHEALTHY_AFTER_DURATION': %v", err))
 	}
 
+	neverRelease := make(chan struct{})
+
 	// Setup the handler here, reducing the need for complexity
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		// It works by checking the time since start on every request
 		timeSinceStart := time.Since(t0)
 		// If we've passed the time for turning healthy, do logic (see below)
-		// On the other hand, if we haven't yet reached 'healthy', don't return anything
-		// at all to simulate a booting service
 		if timeSinceStart > healthyAfter {
 			// ..check if we instead should be unhealthy
 			if shouldGetUnhealthy && timeSinceStart > unhealthyAfter {
 				unhealthySince := timeSinceStart - unhealthyAfter
+				if timeoutOnUnhealthy {
+					// Block the routine to simulate timeout. This is a routine leak, but it's fine as
+					// the intent of the service is to get rebooted
+					<-neverRelease
+				}
 				// Note that this is a 'kind' way of being unhealthy
-				// TODO: Deadlock/performance unhealthiness simulations, where response times out
 				w.WriteHeader(http.StatusInternalServerError)
 				fmt.Fprintf(w, "Time's up, now I'm unhealthy! Been unhealthy for: %v", unhealthySince)
 				return
@@ -56,6 +61,12 @@ func main() {
 			}
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(out))
+
+			// On the other hand, if we haven't yet reached 'healthy'
+			// block the /health handler routine on a channel which never
+			// releases
+		} else {
+			<-neverRelease
 		}
 	})
 
